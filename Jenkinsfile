@@ -2,7 +2,7 @@ pipeline {
     agent any
 
     tools {
-        sonarScanner 'SonarScanner'   // Must match the name set in Jenkins Global Tool Config
+        hudson.plugins.sonar.SonarRunnerInstallation('SonarScanner')
     }
 
     options {
@@ -102,4 +102,3 @@ pipeline {
         }
     }
 }
-
