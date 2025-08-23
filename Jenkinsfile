@@ -1,33 +1,20 @@
-pipeline {
-    agent any
-
-    stages {
-        stage('Checkout') {
-            steps {
-                checkout scm
-            }
-        }
-
-        stage('SonarQube Analysis') {
-            steps {
-                withSonarQubeEnv('SonarQubeServer') {
-                    sh '''
-                        sonar-scanner \
-                          -Dsonar.projectKey=my-project \
-                          -Dsonar.sources=. \
-                          -Dsonar.host.url=http://<YOUR_SONARQUBE_SERVER>:9000 \
-                          -Dsonar.login=<YOUR_TOKEN>
-                    '''
-                }
-            }
-        }
-
-        stage("Quality Gate") {
-            steps {
-                timeout(time: 1, unit: 'HOURS') {
-                    waitForQualityGate abortPipeline: true
-                }
-            }
+stage('SonarQube Analysis') {
+    steps {
+        withSonarQubeEnv('SonarQube') {
+            sh '''#!/bin/bash
+                set -e
+                echo "Starting SonarQube scan..."
+                docker run --rm \\
+                    -v "${WORKSPACE}:/usr/src" \\
+                    -w /usr/src \\
+                    sonarsource/sonar-scanner-cli \\
+                    -Dsonar.projectKey=${SONAR_KEY} \\
+                    -Dsonar.sources=demo-app/ \\
+                    -Dsonar.host.url=${SONAR_HOST_URL} \\
+                    -Dsonar.login=${SONAR_TOKEN} \\
+                    -Dsonar.exclusions="**/node_modules/**,**/target/**,**/.git/**"
+                echo "SonarQube scan finished."
+            '''
         }
     }
 }
