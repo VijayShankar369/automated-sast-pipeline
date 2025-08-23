@@ -13,7 +13,7 @@ pipeline {
             steps {
                 checkout scm
                 script {
-                    env.GIT_COMMIT_SHORT = bat(
+                    env.GIT_COMMIT_SHORT = sh(
                         script: "git rev-parse --short HEAD",
                         returnStdout: true
                     ).trim()
@@ -23,13 +23,13 @@ pipeline {
 
         stage('SonarQube Analysis') {
             steps {
-                withSonarQubeEnv('SonarQube') {  // 👈 must match name in Jenkins > Manage Jenkins > SonarQube servers
-                    bat """
-                        sonar-scanner ^
-                          -Dsonar.projectKey=%JOB_NAME% ^
-                          -Dsonar.sources=demo-app/ ^
-                          -Dsonar.host.url=%SONAR_HOST_URL% ^
-                          -Dsonar.login=%SONAR_AUTH_TOKEN% ^
+                withSonarQubeEnv('SonarQube') {
+                    sh """
+                        sonar-scanner \
+                          -Dsonar.projectKey=${JOB_NAME} \
+                          -Dsonar.sources=demo-app/ \
+                          -Dsonar.host.url=$SONAR_HOST_URL \
+                          -Dsonar.login=$SONAR_AUTH_TOKEN \
                           -Dsonar.exclusions=**/node_modules/**,**/target/**,**/.git/**
                     """
                 }
