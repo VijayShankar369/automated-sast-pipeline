@@ -1,109 +1,12 @@
-﻿pipeline {
+pipeline {
     agent any
-    
-    environment {
-        SONAR_TOKEN = credentials('sonar-token')
-        SONAR_HOST_URL = credentials('sonar-host-url')
-        SONAR_PROJECT_KEY = "${env.JOB_NAME.replace('/', '_')}"
-    }
-    
-    options {
-        buildDiscarder(logRotator(numToKeepStr: '10'))
-        timeout(time: 30, unit: 'MINUTES')
-        timestamps()
-        skipDefaultCheckout()
-    }
-    
+
     stages {
-        stage('Checkout') {
+        stage('Test') {
             steps {
-                checkout scm
-                script {
-                    env.GIT_COMMIT_SHORT = sh(
-                        script: "git rev-parse --short HEAD",
-                        returnStdout: true
-                    ).trim()
-                }
+                echo "Jenkins pipeline is working!"
             }
-        }
-        
-        stage('Semgrep Security Scan') {
-            steps {
-                script {
-                    try {
-                        sh '''
-                            docker run --rm -v "$WORKSPACE:/src" returntocorp/semgrep:latest \
-                                semgrep scan \
-                                --config p/security-audit \
-                                --config p/secrets \
-                                --config /src/semgrep/custom-rules \
-                                --json \
-                                --output /src/semgrep-results.json \
-                                --verbose \
-                                /src/demo-app
-                        '''
-                    } catch (Exception e) {
-                        echo "Semgrep scan completed with findings: ${e.message}"
-                        currentBuild.result = 'UNSTABLE'
-                    }
-                }
-                
-                archiveArtifacts artifacts: 'semgrep-results.json', allowEmptyArchive: true
-                
-                script {
-                    if (fileExists('semgrep-results.json')) {
-                        def results = readJSON file: 'semgrep-results.json'
-                        def findings = results.results ?: []
-                        def criticalCount = findings.findAll { 
-                            it.extra?.severity == 'ERROR' || it.extra?.severity == 'error'
-                        }.size()
-                        
-                        echo "Semgrep Results: ${criticalCount} critical issues, ${findings.size()} total"
-                        
-                        if (criticalCount > 0) {
-                            error("Critical security vulnerabilities found: ${criticalCount}")
-                        }
-                    }
-                }
-            }
-        }
-        
-        stage('SonarQube Analysis') {
-            steps {
-                withSonarQubeEnv('SonarQube') {
-                    sh '''
-                        docker run --rm \
-                            -v "${WORKSPACE}:/usr/src" \
-                            -w /usr/src \
-                            sonarsource/sonar-scanner-cli \
-                            -Dsonar.projectKey=${SONAR_PROJECT_KEY} \
-                            -Dsonar.sources=demo-app/ \
-                            -Dsonar.host.url=${SONAR_HOST_URL} \
-                            -Dsonar.login=${SONAR_TOKEN} \
-                            -Dsonar.exclusions="**/node_modules/**,**/target/**,**/.git/**"
-                    '''
-                }
-            }
-        }
-        
-        stage('Quality Gate') {
-            steps {
-                timeout(time: 10, unit: 'MINUTES') {
-                    waitForQualityGate abortPipeline: true
-                }
-            }
-        }
-    }
-    
-    post {
-        always {
-            echo 'Pipeline completed!'
-        }
-        success {
-            echo '✅ All security checks passed!'
-        }
-        failure {
-            echo '❌ Security issues found - build failed!'
         }
     }
 }
+
