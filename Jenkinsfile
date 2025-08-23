@@ -23,15 +23,15 @@ pipeline {
 
         stage('SonarQube Analysis') {
             steps {
-                withSonarQubeEnv('SonarQube') {
-                    bat '''
+                withSonarQubeEnv('SonarQube') {  // 👈 must match name in Jenkins > Manage Jenkins > SonarQube servers
+                    bat """
                         sonar-scanner ^
                           -Dsonar.projectKey=%JOB_NAME% ^
                           -Dsonar.sources=demo-app/ ^
                           -Dsonar.host.url=%SONAR_HOST_URL% ^
                           -Dsonar.login=%SONAR_AUTH_TOKEN% ^
                           -Dsonar.exclusions=**/node_modules/**,**/target/**,**/.git/**
-                    '''
+                    """
                 }
             }
         }
