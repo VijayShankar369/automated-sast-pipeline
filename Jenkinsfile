@@ -1,59 +1,33 @@
 pipeline {
     agent any
 
-    options {
-        buildDiscarder(logRotator(numToKeepStr: '10'))
-        timeout(time: 30, unit: 'MINUTES')
-        timestamps()
-        skipDefaultCheckout()
-    }
-
     stages {
         stage('Checkout') {
             steps {
                 checkout scm
-                script {
-                    env.GIT_COMMIT_SHORT = sh(
-                        script: "git rev-parse --short HEAD",
-                        returnStdout: true
-                    ).trim()
-                }
             }
         }
 
         stage('SonarQube Analysis') {
             steps {
-                withSonarQubeEnv('SonarQube') {
-                    sh """
+                withSonarQubeEnv('SonarQubeServer') {
+                    sh '''
                         sonar-scanner \
-                          -Dsonar.projectKey=${JOB_NAME} \
-                          -Dsonar.sources=demo-app/ \
-                          -Dsonar.host.url=$SONAR_HOST_URL \
-                          -Dsonar.login=$SONAR_AUTH_TOKEN \
-                          -Dsonar.exclusions=**/node_modules/**,**/target/**,**/.git/**
-                    """
+                          -Dsonar.projectKey=my-project \
+                          -Dsonar.sources=. \
+                          -Dsonar.host.url=http://<YOUR_SONARQUBE_SERVER>:9000 \
+                          -Dsonar.login=<YOUR_TOKEN>
+                    '''
                 }
             }
         }
 
-        stage('Quality Gate') {
+        stage("Quality Gate") {
             steps {
-                timeout(time: 10, unit: 'MINUTES') {
+                timeout(time: 1, unit: 'HOURS') {
                     waitForQualityGate abortPipeline: true
                 }
             }
-        }
-    }
-
-    post {
-        always {
-            echo 'Pipeline completed!'
-        }
-        success {
-            echo '✅ All security checks passed!'
-        }
-        failure {
-            echo '❌ Security issues found - build failed!'
         }
     }
 }
