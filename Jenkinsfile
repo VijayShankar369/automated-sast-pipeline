@@ -1,10 +1,6 @@
 pipeline {
     agent any
 
-    tools {
-        SonarRunnerInstallation 'SonarScanner'
-    }
-
     options {
         buildDiscarder(logRotator(numToKeepStr: '10'))
         timeout(time: 30, unit: 'MINUTES')
@@ -32,7 +28,7 @@ pipeline {
                         sonar-scanner ^
                           -Dsonar.projectKey=%JOB_NAME% ^
                           -Dsonar.sources=demo-app/ ^
-                          -Dsonar.host.url=http://localhost:9000 ^
+                          -Dsonar.host.url=%SONAR_HOST_URL% ^
                           -Dsonar.login=%SONAR_AUTH_TOKEN% ^
                           -Dsonar.exclusions=**/node_modules/**,**/target/**,**/.git/**
                     '''
