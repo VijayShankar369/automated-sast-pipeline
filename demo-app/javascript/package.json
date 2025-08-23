@@ -1,0 +1,18 @@
+﻿{
+  "name": "vulnerable-demo-app",
+  "version": "1.0.0",
+  "description": "Vulnerable Node.js application for SAST testing",
+  "main": "vulnerable_app.js",
+  "scripts": {
+    "start": "node vulnerable_app.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": ["security", "vulnerable", "demo", "sast"],
+  "author": "SAST Pipeline Demo",
+  "license": "MIT",
+  "dependencies": {
+    "express": "^4.18.2",
+    "mysql2": "^3.6.0",
+    "body-parser": "^1.20.2"
+  }
+}

@@ -1,0 +1,55 @@
+﻿name: SonarQube Quality Gate
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  sonarqube:
+    name: SonarQube Analysis
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+
+    - name: Set up JDK 17
+      uses: actions/setup-java@v4
+      with:
+        java-version: '17'
+        distribution: 'temurin'
+
+    - name: Run SonarQube analysis
+      env:
+        SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+        SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      run: |
+        PROJECT_KEY="${{ github.repository_owner }}_${{ github.event.repository.name }}"
+        
+        docker run --rm \
+          -v "${PWD}:/usr/src" \
+          -w /usr/src \
+          sonarsource/sonar-scanner-cli \
+          -Dsonar.projectKey=$PROJECT_KEY \
+          -Dsonar.projectName="${{ github.repository }}" \
+          -Dsonar.sources=demo-app/ \
+          -Dsonar.host.url=${{ secrets.SONAR_HOST_URL }} \
+          -Dsonar.login=${{ secrets.SONAR_TOKEN }} \
+          -Dsonar.java.sources=demo-app/java/src/main/java \
+          -Dsonar.exclusions="**/node_modules/**,**/target/**,**/.git/**"
+
+    - name: Quality Gate Status Check
+      uses: sonarqube-quality-gate-action@master
+      timeout-minutes: 5
+      env:
+        SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+        SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}

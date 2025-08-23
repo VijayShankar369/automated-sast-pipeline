@@ -1,0 +1,110 @@
+﻿name: Semgrep Security Scan
+on:
+  pull_request:
+    branches: [main, develop]
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  security-events: write
+  pull-requests: write
+  actions: read
+
+jobs:
+  semgrep:
+    name: Semgrep SAST Scan
+    runs-on: ubuntu-latest
+    container:
+      image: returntocorp/semgrep:latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+
+    - name: Run Semgrep scan with custom rules
+      run: |
+        semgrep scan \
+          --config p/security-audit \
+          --config p/secrets \
+          --config ./semgrep/custom-rules \
+          --sarif \
+          --output semgrep.sarif \
+          --verbose \
+          --exclude="*.test.js" \
+          --exclude="**/node_modules/**" \
+          --exclude="**/target/**" \
+          --exclude="**/.git/**"
+      env:
+        SEMGREP_APP_TOKEN: ${{ secrets.SEMGREP_APP_TOKEN }}
+
+    - name: Upload SARIF to GitHub Security tab
+      uses: github/codeql-action/upload-sarif@v3
+      if: always()
+      with:
+        sarif_file: semgrep.sarif
+        category: semgrep
+
+    - name: Upload SARIF as artifact
+      uses: actions/upload-artifact@v4
+      if: always()
+      with:
+        name: semgrep-sarif-results
+        path: semgrep.sarif
+        retention-days: 30
+
+    - name: Process and comment on PR
+      if: github.event_name == 'pull_request'
+      uses: actions/github-script@v7
+      with:
+        script: |
+          const fs = require('fs');
+          try {
+            const sarif = JSON.parse(fs.readFileSync('semgrep.sarif', 'utf8'));
+            const results = sarif.runs[0].results || [];
+            
+            if (results.length === 0) {
+              github.rest.issues.createComment({
+                issue_number: context.issue.number,
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                body: '✅ **Semgrep Security Scan**: No security vulnerabilities found!'
+              });
+            } else {
+              const highSeverity = results.filter(r => r.level === 'error').length;
+              const mediumSeverity = results.filter(r => r.level === 'warning').length;
+              const lowSeverity = results.filter(r => r.level === 'note' || r.level === 'info').length;
+              
+              let comment = 🔍 **Semgrep Security Scan Results**\n\n;
+              comment += - **Critical/High Severity**: ${highSeverity}\n;
+              comment += - **Medium Severity**: ${mediumSeverity}\n;
+              comment += - **Low Severity**: ${lowSeverity}\n;
+              comment += - **Total Issues**: ${results.length}\n\n;
+              
+              if (highSeverity > 0) {
+                comment += ❌ **Action Required**: Critical/High severity security issues detected. Please review the [Security tab](${context.payload.repository.html_url}/security/code-scanning) for details.\n\n;
+                comment += ### Critical Issues Summary:\n;
+                results.filter(r => r.level === 'error').slice(0, 5).forEach(issue => {
+                  const location = issue.locations?.physicalLocation?.artifactLocation?.uri || 'unknown';
+                  const line = issue.locations?.physicalLocation?.region?.startLine || 'unknown';
+                  comment += - **${issue.ruleId}**: ${issue.message.text} (${location}:${line})\n;
+                });
+              } else if (mediumSeverity > 0) {
+                comment += ⚠️ **Review Recommended**: Medium severity issues found. Consider addressing these before merging.;
+              } else {
+                comment += ℹ️ **Low Risk**: Only low severity issues found. Review when convenient.;
+              }
+              
+              github.rest.issues.createComment({
+                issue_number: context.issue.number,
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                body: comment
+              });
+            }
+          } catch (error) {
+            console.log('Error processing SARIF results:', error);
+          }
