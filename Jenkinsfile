@@ -4,9 +4,18 @@ pipeline {
   environment {
     SONAR_PROJECT_KEY = 'automated-sast-pipeline'
     SONARQUBE_SERVER  = 'SonarQubeServer'
+    REPO_URL          = 'https://github.com/VijayShankar369/automated-sast-pipeline.git'
   }
 
   stages {
+    stage('Clone Repository') {
+      steps {
+        // Clean workspace then clone fresh
+        deleteDir()
+        git url: "${REPO_URL}", branch: 'main'
+      }
+    }
+
     stage('Semgrep Security Scan') {
       steps {
         echo 'Starting Semgrep security scan (native)...'
@@ -53,4 +62,3 @@ pipeline {
     failure { echo 'Pipeline failed!' }
   }
 }
-
