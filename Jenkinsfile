@@ -6,18 +6,12 @@ pipeline {
         SONARQUBE_SERVER = 'SonarQubeServer'
     }
 
-    tools {
-        // Define SonarQube Scanner tool if installed via Global Tool Configuration
-        // Remove this section if sonar-scanner is available in PATH
-        sonarQubeScanner 'SonarQube Scanner'
-    }
-
     stages {
         stage('SonarQube Analysis') {
             steps {
                 script {
-                    // Get scanner home path
-                    def scannerHome = tool 'SonarQube Scanner'
+                    // Use the correct tool identifier for SonarQube Scanner
+                    def scannerHome = tool name: 'SonarQube Scanner', type: 'hudson.plugins.sonar.SonarRunnerInstallation'
                     
                     withSonarQubeEnv("${SONARQUBE_SERVER}") {
                         sh """
@@ -44,5 +38,3 @@ pipeline {
         }
     }
 }
-
-
