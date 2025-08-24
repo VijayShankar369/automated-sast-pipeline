@@ -13,6 +13,12 @@ pipeline {
       }
     }
     
+  stage('Semgrep Scan') {
+  steps {
+    sh 'semgrep --config=auto demo-app/'
+  }
+}
+
     stage('Test Everything Works') {
       steps {
         sh 'echo "Pipeline is working!"'
