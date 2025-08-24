@@ -5,6 +5,12 @@ pipeline {
     SONAR_PROJECT_KEY = 'automated-sast-pipeline'
     SONARQUBE_SERVER  = 'SonarQubeServer'
     REPO_URL          = 'https://github.com/VijayShankar369/automated-sast-pipeline.git'
+    BRANCH            = 'main'
+  }
+
+  options {
+    // Disable automatic SCM checkout
+    skipDefaultCheckout()
   }
 
   stages {
@@ -12,7 +18,7 @@ pipeline {
       steps {
         // Clean workspace then clone fresh
         deleteDir()
-        git url: "${REPO_URL}", branch: 'main'
+        git url: "${REPO_URL}", branch: "${BRANCH}"
       }
     }
 
@@ -62,4 +68,3 @@ pipeline {
     failure { echo 'Pipeline failed!' }
   }
 }
-
